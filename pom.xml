@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>edu.si.sidora</groupId>
+  <artifactId>hydra-transmission</artifactId>
+  <packaging>bundle</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <name>Sidora-Hydra Transmission</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <camel.version>2.16.3</camel.version>
+    <karaf.version>3.0.7</karaf.version>
+
+    <test.port>8080</test.port>
+    <fedora.home>${project.build.directory}/fedora-home</fedora.home>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-blueprint</artifactId>
+      <version>${camel.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-cxf</artifactId>
+      <version>${camel.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-ftp</artifactId>
+      <version>${camel.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.enterprise</artifactId>
+      <version>5.0.0</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- test gear -->
+
+    <dependency>
+      <!-- convenient for quick test data setup -->
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>22.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.fcrepo</groupId>
+      <artifactId>fcrepo-webapp-fedora</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+      <type>war</type>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-test-blueprint</artifactId>
+      <version>${camel.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>3.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm-all</artifactId>
+      <version>5.1</version>
+      <scope>test</scope>
+    </dependency>
+    
+     <dependency>
+        <groupId>org.apache.ftpserver</groupId>
+        <artifactId>ftpserver-core</artifactId>
+        <version>1.1.1</version>
+        <scope>test</scope>
+     </dependency>
+
+    <!-- for interacting with repo and endpoints -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.3</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- test logging -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>2.8.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.8.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>jul-to-slf4j</artifactId>
+      <version>1.7.20</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>jcl-over-slf4j</artifactId>
+      <version>1.7.20</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <defaultGoal>install</defaultGoal>
+
+    <testResources>
+      <testResource>
+        <directory>${basedir}/src/test/resources</directory>
+        <targetPath>${project.build.directory}</targetPath>
+        <filtering>true</filtering>
+      </testResource>
+      <testResource>
+        <directory>${basedir}/src/test/resources/logging</directory>
+        <targetPath>${project.build.directory}/test-classes</targetPath>
+        <filtering>true</filtering>
+      </testResource>
+    </testResources>
+
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.6.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.0.2</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+
+      <!-- to generate the MANIFEST-FILE of the bundle -->
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <version>2.5.4</version>
+        <extensions>true</extensions>
+        <configuration>
+          <instructions>
+            <Bundle-SymbolicName>hydra-transmission</Bundle-SymbolicName>
+            <Private-Package>edu.si.sidora.hydra.*</Private-Package>
+            <Import-Package>*</Import-Package>
+          </instructions>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.karaf.tooling</groupId>
+        <artifactId>karaf-maven-plugin</artifactId>
+        <version>${karaf.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+
+      <!-- reserve network ports for integration testing -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <configuration>
+          <portNames>
+            <portName>dynamic.test.port</portName>
+            <portName>ftpPort</portName>
+          </portNames>
+        </configuration>
+        <executions>
+          <execution>
+            <!-- we choose this phase to ensure that the chosen port number is available for test resource filtering, specifically 
+              into fedora.fcfg -->
+            <phase>process-test-sources</phase>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>2.19.1</version>
+        <configuration>
+          <systemPropertyVariables>
+            <dynamic.test.port>${dynamic.test.port}</dynamic.test.port>
+            <buildDirectory>${project.build.directory}</buildDirectory>
+            <ftpPort>${ftpPort}</ftpPort>
+            <si.fedora.host>http://localhost:${dynamic.test.port}/fcrepo-webapp-fedora</si.fedora.host>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.cargo</groupId>
+        <artifactId>cargo-maven2-plugin</artifactId>
+        <version>1.6.2</version>
+        <configuration>
+          <container>
+            <containerId>tomcat7x</containerId>
+            <type>embedded</type>
+            <systemProperties>
+              <fedora.home>${fedora.home}</fedora.home>
+              <!-- keep Apache Derby as quiet as possible -->
+              <derby.stream.error.field>java.lang.System.err</derby.stream.error.field>
+              <derby.stream.error.logSeverityLevel>5000</derby.stream.error.logSeverityLevel>
+            </systemProperties>
+          </container>
+          <configuration>
+            <properties>
+              <cargo.logging>high</cargo.logging>
+              <cargo.servlet.uriencoding>UTF-8</cargo.servlet.uriencoding>
+              <cargo.jvmargs>-Xmx512m</cargo.jvmargs>
+              <cargo.logging>high</cargo.logging>
+              <cargo.servlet.port>${dynamic.test.port}</cargo.servlet.port>
+              <!-- fire AJP into /dev/null -->
+              <cargo.tomcat.ajp.port>0</cargo.tomcat.ajp.port>
+            </properties>
+          </configuration>
+          <deployer><!-- empty deployer element prevents Cargo from trying to deploy our project, which is a bundle, into 
+              Tomcat -->
+          </deployer>
+
+          <deployables>
+            <deployable>
+              <groupId>org.fcrepo</groupId>
+              <artifactId>fcrepo-webapp-fedora</artifactId>
+              <type>war</type>
+            </deployable>
+          </deployables>
+        </configuration>
+        <executions>
+          <execution>
+            <id>start</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>start</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>stop</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>stop</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

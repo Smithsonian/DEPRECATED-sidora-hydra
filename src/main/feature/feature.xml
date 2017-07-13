@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<features xmlns="http://karaf.apache.org/xmlns/features/v1.2.1" name="hydra-transmission">
+    <feature name="hydra-transmission" version="0.0.1-SNAPSHOT" description="Sidora-Hydra Transmission">
+        <bundle>mvn:edu.si.sidora/hydra-transmission</bundle>
+        <feature version="2.16.3">camel-cxf</feature>
+        <feature version="2.16.3">camel-blueprint</feature>
+    </feature>
+</features>
