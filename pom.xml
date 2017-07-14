@@ -95,6 +95,14 @@
       <version>4.5.3</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>commons-net</groupId>
+      <artifactId>commons-net</artifactId>
+      <version>3.6</version>
+      <scope>test</scope>
+    </dependency>
+    
+    
 
     <!-- test logging -->
     <dependency>
@@ -179,6 +187,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
         <configuration>
           <portNames>
             <portName>dynamic.test.port</portName>
@@ -258,7 +267,7 @@
             </deployable>
           </deployables>
         </configuration>
-        <executions>
+        <!--  <executions>
           <execution>
             <id>start</id>
             <phase>pre-integration-test</phase>
@@ -273,7 +282,7 @@
               <goal>stop</goal>
             </goals>
           </execution>
-        </executions>
+        </executions> -->
       </plugin>
     </plugins>
   </build>

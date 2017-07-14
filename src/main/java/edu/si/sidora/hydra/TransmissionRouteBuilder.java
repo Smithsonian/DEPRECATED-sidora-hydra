@@ -51,7 +51,7 @@ public class TransmissionRouteBuilder extends RouteBuilder {
                 .setHeader("location", constant("pool"))
             .otherwise().throwException(IllegalArgumentException.class, "Hydra location must be 'scratch' or 'pool'!")
             .log(INFO, log, "to ${header.location}")
-            .toD("ftp://{{edu.si.sidora.hydra.location}}{{edu.si.sidora.hydra.port}}/${header.location}/${header.user}")
+            .toD("ftp://{{edu.si.sidora.hydra.location}}{{edu.si.sidora.hydra.port}}/${header.location}/${header.user}?username=testUser&password=testPassword")
         .to("mock:receptacle");
         
     }

@@ -9,6 +9,9 @@
     <Logger name="org.apache" level="WARN" additivity="false">
       <AppenderRef ref="Console" />
     </Logger>
+    <Logger name="org.apache.ftpserver" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console" />
+    </Logger>
     <Logger name="edu.si" level="INFO" additivity="false">
       <AppenderRef ref="Console" />
     </Logger>
