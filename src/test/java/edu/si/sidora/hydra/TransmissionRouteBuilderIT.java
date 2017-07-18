@@ -9,10 +9,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Dictionary;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.ws.rs.core.MediaType;
@@ -28,7 +27,6 @@ import org.apache.ftpserver.ftplet.FtpException;
 import org.apache.ftpserver.listener.ListenerFactory;
 import org.apache.ftpserver.usermanager.ClearTextPasswordEncryptor;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
-import org.apache.ftpserver.usermanager.UserManagerFactory;
 import org.apache.ftpserver.util.IoUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -38,7 +36,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.apache.mina.core.IoUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,15 +49,13 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
 
     protected static final String FEDORA_URI = System.getProperty("si.fedora.host");
 
-    private static final int FTP_PORT = Integer.parseInt(System.getProperty("ftpPort"));
+    private static final int FTP_PORT = Integer.parseInt(System.getProperty("edu.si.sidora.hydra.port"));
 
-    private static final Path FOXML_DIR = Paths.get(BUILD_DIR + "/foxml");
+    private static final Path FOXML = Paths.get(BUILD_DIR + "/foxml/genomics_1.xml");
 
     private static final Logger log = LoggerFactory.getLogger(TransmissionRouteBuilderIT.class);
 
     static CloseableHttpClient httpClient;
-
-    static List<String> ingestedPids;
 
     @Override
     protected String getBlueprintDescriptor() {
@@ -68,21 +63,20 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
     }
 
     @BeforeClass
-    public static void loadObjectsIntoFedora() throws IOException, FtpException {
-
+    public static void startup() throws IOException, FtpException {
+        loadObjectIntoFedora();
         buildFtpServer();
+    }
 
+    private static void loadObjectIntoFedora() throws IOException {
         BasicCredentialsProvider provider = new BasicCredentialsProvider();
         provider.setCredentials(ANY, new UsernamePasswordCredentials("fedoraAdmin", "fc"));
         httpClient = HttpClientBuilder.create().setDefaultCredentialsProvider(provider).build();
-
-        log.info("Using FOXML from: {}", FOXML_DIR);
-        try (Stream<Path> foxmls = Files.walk(FOXML_DIR).filter(p -> !p.equals(FOXML_DIR))) {
-            //ingestedPids = 
-                            foxmls.peek(p -> log.info("Ingesting: {}", p.getFileName()))
-                            .map((UnsafeIO<Path, byte[]>) Files::readAllBytes)
-                          //  .map(((UnsafeIO<byte[], String>) TransmissionRouteBuilderIT::ingest))
-                            .collect(toList());
+        HttpPost ingest = new HttpPost(FEDORA_URI + "/objects/genomics:1?format=info:fedora/fedora-system:FOXML-1.1");
+        ingest.setEntity(new ByteArrayEntity(Files.readAllBytes(FOXML)));
+        ingest.setHeader("Content-type", MediaType.TEXT_XML);
+        try (CloseableHttpResponse pidRes = httpClient.execute(ingest)) {
+            log.info("Ingested test object {}", EntityUtils.toString(pidRes.getEntity()));
         }
     }
 
@@ -105,30 +99,17 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         httpClient.close();
     }
 
-    static String ingest(byte[] foxml) throws IOException {
-        HttpPost ingest = new HttpPost(FEDORA_URI + "/objects/new?format=info:fedora/fedora-system:FOXML-1.1");
-        ingest.setEntity(new ByteArrayEntity(foxml));
-        ingest.setHeader("Content-type", MediaType.TEXT_XML);
-        try (CloseableHttpResponse pidRes = httpClient.execute(ingest)) {
-            return EntityUtils.toString(pidRes.getEntity());
-        }
-    }
-
     @Test
-    public void testDirectTransmission() throws IOException {
-        String fileLocation = "file:" + BUILD_DIR + "/testfile.fa";
-        log.info("Testing direct transmission with file: {}", fileLocation);
-        ImmutableMap<String, Object> testHeaders = ImmutableMap.of("fileUri", fileLocation);
-        template().sendBodyAndHeaders("direct:transmit-to-hydra", "", testHeaders);
+    public void testTransmission() throws IOException {
+        ImmutableMap<String, Object> testHeaders = ImmutableMap.of("pid", "genomics:1", "user", "testUser");
+        template().sendBodyAndHeaders("direct:transmission", "", testHeaders);
         FTPClient ftp = new FTPClient();
         ftp.configure(new FTPClientConfig());
         ftp.connect("localhost", FTP_PORT);
         assertTrue("Failed to connect to FTP server!", FTPReply.isPositiveCompletion(ftp.getReplyCode()));
-        log.info("Connected to FTP server.");
         ftp.login("testUser", "testPassword");
-        log.info("Working FTP dir: {}", ftp.printWorkingDirectory());
-        for (FTPFile file: ftp.listFiles()) log.info("Found FTP file: {}", file);
-        try (InputStream testData = ftp.retrieveFileStream("testfile.fa"); ) {
+        ftp.changeWorkingDirectory("pool/genomics/testUser");
+        try (InputStream testData = ftp.retrieveFileStream("testfile.fa");) {
             String data = IoUtils.readFully(testData);
             assertFalse(data.isEmpty());
         }

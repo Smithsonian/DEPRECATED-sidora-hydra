@@ -9,7 +9,7 @@
 
   <foxml:datastream ID="OBJ" STATE="A" CONTROL_GROUP="E" VERSIONABLE="true">
     <foxml:datastreamVersion ID="OBJ.0" LABEL="Pretend genomics data" MIMETYPE="">
-      <foxml:contentLocation TYPE="URL" REF="file://${buildDirectory}/testfile.fa" />
+      <foxml:contentLocation TYPE="URL" REF="file:/${build.directory}/testfile.fa" />
     </foxml:datastreamVersion>
   </foxml:datastream>
 
