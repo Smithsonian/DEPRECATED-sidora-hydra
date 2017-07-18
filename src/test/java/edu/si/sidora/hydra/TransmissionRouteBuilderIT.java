@@ -1,6 +1,5 @@
 package edu.si.sidora.hydra;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.http.auth.AuthScope.ANY;
 
 import java.io.File;
@@ -9,17 +8,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Dictionary;
-import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.camel.test.blueprint.CamelBlueprintTestSupport;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
-import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
@@ -109,7 +104,7 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         assertTrue("Failed to connect to FTP server!", FTPReply.isPositiveCompletion(ftp.getReplyCode()));
         ftp.login("testUser", "testPassword");
         ftp.changeWorkingDirectory("pool/genomics/testUser");
-        try (InputStream testData = ftp.retrieveFileStream("testfile.fa");) {
+        try (InputStream testData = ftp.retrieveFileStream("PretendGenomicsResource.fa");) {
             String data = IoUtils.readFully(testData);
             assertFalse(data.isEmpty());
         }

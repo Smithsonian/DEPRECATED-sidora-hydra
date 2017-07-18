@@ -7,9 +7,7 @@ import static org.apache.camel.LoggingLevel.DEBUG;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.Map;
 
-import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +18,9 @@ public class TransmissionRouteBuilder extends RouteBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(LOG_CHANNEL);
 
-    private static final Map<String, String> namespace = singletonMap("fedora", "http://www.fedora.info/definitions/1/0/management/");
-
     @Override
     public void configure() {
-        
+
         onException(Throwable.class).to("mock:errorRoute");
 
         from("cxfrs:bean:transmissionServer?bindingStyle=SimpleConsumer")
@@ -32,13 +28,24 @@ public class TransmissionRouteBuilder extends RouteBuilder {
         
         from("direct:transmission")
         .to("direct:acquire-file-location")
+        .to("direct:acquire-file-label")
         .to("direct:transmit-to-hydra");
 
         from("direct:acquire-file-location")
         .setHeader(HTTP_METHOD, constant("GET"))
         .setHeader(HTTP_URI, simple("{{edu.si.sidora.hydra.fedora.uri}}/objects/${header.pid}/datastreams/OBJ?format=xml"))
         .to("http://dummy?authMethod=Basic&authUsername={{edu.si.sidora.hydra.fedora.user}}&authPassword={{edu.si.sidora.hydra.fedora.password}}&httpClient.authenticationPreemptive=true")
-        .setHeader("fileUri").xpath("/fedora:datastreamProfile/fedora:dsLocation/text()", namespace);
+        .setHeader("fileUri")
+            .xpath("/management:datastreamProfile/management:dsLocation/text()",
+                            singletonMap("management", "http://www.fedora.info/definitions/1/0/management/"));
+        
+        from("direct:acquire-file-label")
+        .setHeader(HTTP_METHOD, constant("GET"))
+        .setHeader(HTTP_URI, simple("{{edu.si.sidora.hydra.fedora.uri}}/objects/${header.pid}?format=xml"))
+        .to("http://dummy?authMethod=Basic&authUsername={{edu.si.sidora.hydra.fedora.user}}&authPassword={{edu.si.sidora.hydra.fedora.password}}&httpClient.authenticationPreemptive=true")
+        .setHeader("hydraFileName")
+             .xpath("/access:objectProfile/access:objLabel/text()",
+                             singletonMap("access", "http://www.fedora.info/definitions/1/0/access/"));
         
         from("direct:transmit-to-hydra")
         // get the file from the fileUri header
@@ -55,13 +62,13 @@ public class TransmissionRouteBuilder extends RouteBuilder {
         .log(DEBUG, log, "Transmitting file with length: ${header.size}")
         .choice()
             .when(simple("${header.size} >= {{edu.si.sidora.hydra.sizeForScratch}}"))
-                .setHeader("location", constant("scratch"))
+                .setHeader("hydraLocation", constant("scratch"))
             .when(simple("${header.size} < {{edu.si.sidora.hydra.sizeForScratch}}"))
-                .setHeader("location", constant("pool"))
+                .setHeader("hydraLocation", constant("pool"))
             .otherwise().throwException(IllegalArgumentException.class, "Hydra location must be 'scratch' or 'pool'!").end()
-        .log(DEBUG, log, "to ${header.location}")
-        .setHeader("CamelFileName", constant("testfile.fa"))
-        .toD("ftp://{{edu.si.sidora.hydra.location}}:{{edu.si.sidora.hydra.port}}/${header.location}/genomics/${header.user}?username=testUser&password=testPassword&autoCreate=true")
+        .log(DEBUG, log, "to ${header.hydraLocation}")
+        .setHeader("CamelFileName").simple("${header.hydraFileName}")
+        .toD("ftp://{{edu.si.sidora.hydra.location}}:{{edu.si.sidora.hydra.port}}/${header.hydraLocation}/genomics/${header.user}?username=testUser&password=testPassword&autoCreate=true")
         .log(DEBUG, "Transmission complete");
         
     }
