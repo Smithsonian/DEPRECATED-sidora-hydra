@@ -8,6 +8,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
@@ -19,6 +22,7 @@ import org.apache.commons.net.ftp.FTPReply;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.ftplet.FtpException;
+import org.apache.ftpserver.listener.Listener;
 import org.apache.ftpserver.listener.ListenerFactory;
 import org.apache.ftpserver.usermanager.ClearTextPasswordEncryptor;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
@@ -50,7 +54,9 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
 
     private static final Logger log = LoggerFactory.getLogger(TransmissionRouteBuilderIT.class);
 
-    static CloseableHttpClient httpClient;
+    private static CloseableHttpClient httpClient;
+    
+    private static FtpServer server;
 
     @Override
     protected String getBlueprintDescriptor() {
@@ -83,8 +89,10 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         userManagerFactory.setFile(new File(BUILD_DIR + "/ftpserver/user.properties"));
         userManagerFactory.setPasswordEncryptor(new ClearTextPasswordEncryptor());
         serverFactory.setUserManager(userManagerFactory.createUserManager());
-        serverFactory.setListeners(ImmutableMap.of("default", listenerFactory.createListener()));
-        FtpServer server = serverFactory.createServer();
+        Map<String, Listener> listeners = new HashMap<>(1);
+        listeners.put("default", listenerFactory.createListener());
+        serverFactory.setListeners(listeners);
+        server = serverFactory.createServer();
         log.info("Starting FTP server on port: {}", FTP_PORT);
         server.start();
     }
@@ -92,6 +100,7 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
     @AfterClass
     public static void cleanUp() throws IOException {
         httpClient.close();
+        server.stop();
     }
 
     @Test
@@ -106,9 +115,8 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         ftp.changeWorkingDirectory("pool/genomics/testUser");
         try (InputStream testData = ftp.retrieveFileStream("PretendGenomicsResource.fa");) {
             String data = IoUtils.readFully(testData);
-            assertFalse(data.isEmpty());
+            assertTrue(data.contains("THIS DATA IS SO INCREDIBLY INTERESTING!"));
         }
-        ftp.completePendingCommand();
     }
 
     @FunctionalInterface
