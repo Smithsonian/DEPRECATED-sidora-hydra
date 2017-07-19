@@ -68,6 +68,7 @@ public class TransmissionRouteBuilder extends RouteBuilder {
             .otherwise().throwException(IllegalArgumentException.class, "Hydra location must be 'scratch' or 'pool'!").end()
         .log(DEBUG, log, "to ${header.hydraLocation}")
         .setHeader("CamelFileName").simple("${header.hydraFileName}")
+        .threads(5)
         .toD("ftp://{{edu.si.sidora.hydra.location}}:{{edu.si.sidora.hydra.port}}/${header.hydraLocation}/genomics/${header.user}?username=testUser&password=testPassword&autoCreate=true")
         .log(DEBUG, "Transmission complete");
         
