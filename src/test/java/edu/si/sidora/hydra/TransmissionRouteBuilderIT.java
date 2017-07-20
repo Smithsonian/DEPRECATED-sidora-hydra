@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -22,7 +21,6 @@ import org.apache.commons.net.ftp.FTPReply;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.ftplet.FtpException;
-import org.apache.ftpserver.listener.Listener;
 import org.apache.ftpserver.listener.ListenerFactory;
 import org.apache.ftpserver.usermanager.ClearTextPasswordEncryptor;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
@@ -40,8 +38,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.ImmutableMap;
 
 public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
     private static final String BUILD_DIR = System.getProperty("buildDirectory");
@@ -89,9 +85,7 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         userManagerFactory.setFile(new File(BUILD_DIR + "/ftpserver/user.properties"));
         userManagerFactory.setPasswordEncryptor(new ClearTextPasswordEncryptor());
         serverFactory.setUserManager(userManagerFactory.createUserManager());
-        Map<String, Listener> listeners = new HashMap<>(1);
-        listeners.put("default", listenerFactory.createListener());
-        serverFactory.setListeners(listeners);
+        serverFactory.setListeners(mapOf("default", listenerFactory.createListener()));
         server = serverFactory.createServer();
         log.info("Starting FTP server on port: {}", FTP_PORT);
         server.start();
@@ -105,18 +99,24 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
 
     @Test
     public void testTransmission() throws IOException {
-        ImmutableMap<String, Object> testHeaders = ImmutableMap.of("pid", "genomics:1", "user", "testUser");
-        template().sendBodyAndHeaders("direct:transmission", "", testHeaders);
+        template().sendBodyAndHeaders("direct:transmission", "", mapOf("pid", "genomics:1", "user", "testUser"));
         FTPClient ftp = new FTPClient();
         ftp.configure(new FTPClientConfig());
         ftp.connect("localhost", FTP_PORT);
         assertTrue("Failed to connect to FTP server!", FTPReply.isPositiveCompletion(ftp.getReplyCode()));
         ftp.login("testUser", "testPassword");
         ftp.changeWorkingDirectory("pool/genomics/testUser");
-        try (InputStream testData = ftp.retrieveFileStream("PretendGenomicsResource.fa");) {
+        try (InputStream testData = ftp.retrieveFileStream("testfile.fa");) {
             String data = IoUtils.readFully(testData);
-            assertTrue(data.contains("THIS DATA IS SO INCREDIBLY INTERESTING!"));
+            assertEquals("THIS DATA IS SO INCREDIBLY INTERESTING!\n", data);
         }
+    }
+    
+    @SuppressWarnings({"serial", "unchecked"})
+    private static <K, V> Map<K, V> mapOf(Object... mappings) {
+        return new HashMap<K, V>(mappings.length / 2) {{
+                for (int i = 0; i < mappings.length; i = i + 2) put((K) mappings[i], (V) mappings[i + 1]);
+            }};
     }
 
     @FunctionalInterface

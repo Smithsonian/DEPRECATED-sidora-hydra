@@ -28,7 +28,6 @@ public class TransmissionRouteBuilder extends RouteBuilder {
         
         from("direct:transmission")
         .to("direct:acquire-file-location")
-        .to("direct:acquire-file-label")
         .to("direct:transmit-to-hydra");
 
         from("direct:acquire-file-location")
@@ -38,15 +37,7 @@ public class TransmissionRouteBuilder extends RouteBuilder {
         .setHeader("fileUri")
             .xpath("/management:datastreamProfile/management:dsLocation/text()",
                             singletonMap("management", "http://www.fedora.info/definitions/1/0/management/"));
-        
-        from("direct:acquire-file-label")
-        .setHeader(HTTP_METHOD, constant("GET"))
-        .setHeader(HTTP_URI, simple("{{edu.si.sidora.hydra.fedora.uri}}/objects/${header.pid}?format=xml"))
-        .to("http://dummy?authMethod=Basic&authUsername={{edu.si.sidora.hydra.fedora.user}}&authPassword={{edu.si.sidora.hydra.fedora.password}}&httpClient.authenticationPreemptive=true")
-        .setHeader("hydraFileName")
-             .xpath("/access:objectProfile/access:objLabel/text()",
-                             singletonMap("access", "http://www.fedora.info/definitions/1/0/access/"));
-        
+
         from("direct:transmit-to-hydra")
         // get the file from the fileUri header
         .process(exchange -> {
@@ -58,6 +49,7 @@ public class TransmissionRouteBuilder extends RouteBuilder {
             exchange.getIn().setBody(new FileInputStream(file));
             // rely on the OS for file metadata
             exchange.getIn().setHeader("size", file.length());
+            exchange.getIn().setHeader("CamelFileName", file.getName());
          })
         .log(DEBUG, log, "Transmitting file with length: ${header.size}")
         .choice()
@@ -67,7 +59,6 @@ public class TransmissionRouteBuilder extends RouteBuilder {
                 .setHeader("hydraLocation", constant("pool"))
             .otherwise().throwException(IllegalArgumentException.class, "Hydra location must be 'scratch' or 'pool'!").end()
         .log(DEBUG, log, "to ${header.hydraLocation}")
-        .setHeader("CamelFileName").simple("${header.hydraFileName}")
         .threads(5)
         .toD("ftp://{{edu.si.sidora.hydra.location}}:{{edu.si.sidora.hydra.port}}/${header.hydraLocation}/genomics/${header.user}?username=testUser&password=testPassword&autoCreate=true")
         .log(DEBUG, "Transmission complete");
