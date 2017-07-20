@@ -9,13 +9,13 @@
     <Logger name="org.apache" level="WARN" additivity="false">
       <AppenderRef ref="Console" />
     </Logger>
-    <Logger name="org.apache.ftpserver" level="WARn" additivity="false">
+    <Logger name="org.apache.ftpserver" level="WARN" additivity="false">
       <AppenderRef ref="Console" />
     </Logger>
     <Logger name="edu.si" level="DEBUG" additivity="false">
       <AppenderRef ref="Console" />
     </Logger>
-    <Root level="WARN">
+    <Root level="INFO">
       <AppenderRef ref="Console" />
     </Root>
   </Loggers>

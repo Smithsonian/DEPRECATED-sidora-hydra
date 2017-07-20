@@ -16,16 +16,18 @@
       <cm:property name="edu.si.sidora.hydra.location" value="localhost" />
       <cm:property name="edu.si.sidora.hydra.port" value="$[edu.si.sidora.hydra.port]" />
       <cm:property name="edu.si.sidora.hydra.sizeForScratch" value="100000000000" />
+      <cm:property name="edu.si.sidora.hydra.externalStorageLocation" value="$[buildDirectory]/external-storage" />
     </cm:default-properties>
   </cm:property-placeholder>
 
-  <bean id="transmissionRoutes" class="edu.si.sidora.hydra.TransmissionRouteBuilder" />
+  <bean id="hydraRoutes" class="edu.si.sidora.hydra.HydraRouteBuilder" />
 
-  <cxf:rsServer id="transmissionServer" address="/hydra" serviceClass="edu.si.sidora.hydra.TransmissionService"
+
+  <cxf:rsServer id="hydraServer" address="/hydra" serviceClass="edu.si.sidora.hydra.HydraService"
     loggingFeatureEnabled="true" />
 
-  <camelContext id="transmissionContext" xmlns="http://camel.apache.org/schema/blueprint">
-    <routeBuilder id="transmissionRoute" ref="transmissionRoutes" />
+  <camelContext xmlns="http://camel.apache.org/schema/blueprint">
+    <routeBuilder ref="hydraRoutes" />
   </camelContext>
 
 </blueprint>

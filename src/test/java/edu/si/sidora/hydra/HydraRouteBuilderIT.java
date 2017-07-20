@@ -11,10 +11,13 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.camel.test.blueprint.CamelBlueprintTestSupport;
+import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
 import org.apache.commons.net.ftp.FTPReply;
@@ -26,7 +29,9 @@ import org.apache.ftpserver.usermanager.ClearTextPasswordEncryptor;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
 import org.apache.ftpserver.util.IoUtils;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -38,21 +43,24 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
-public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
+public class HydraRouteBuilderIT extends CamelBlueprintTestSupport {
     private static final String BUILD_DIR = System.getProperty("buildDirectory");
 
     protected static final String FEDORA_URI = System.getProperty("si.fedora.host");
 
     private static final int FTP_PORT = Integer.parseInt(System.getProperty("edu.si.sidora.hydra.port"));
 
-    private static final Path FOXML = Paths.get(BUILD_DIR + "/foxml/genomics_1.xml");
+    private static final String FOXML = BUILD_DIR + "/foxml";
 
-    private static final Logger log = LoggerFactory.getLogger(TransmissionRouteBuilderIT.class);
+    private static final Logger logger = LoggerFactory.getLogger("Integration tests");
 
     private static CloseableHttpClient httpClient;
-    
+
     private static FtpServer server;
+
+    private static final Pattern dsLocation = Pattern.compile("<dsLocation>(.*)</dsLocation>");
 
     @Override
     protected String getBlueprintDescriptor() {
@@ -61,19 +69,25 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
 
     @BeforeClass
     public static void startup() throws IOException, FtpException {
-        loadObjectIntoFedora();
+        loadObjectsIntoFedora();
         buildFtpServer();
     }
 
-    private static void loadObjectIntoFedora() throws IOException {
+    private static void loadObjectsIntoFedora() throws IOException {
         BasicCredentialsProvider provider = new BasicCredentialsProvider();
         provider.setCredentials(ANY, new UsernamePasswordCredentials("fedoraAdmin", "fc"));
         httpClient = HttpClientBuilder.create().setDefaultCredentialsProvider(provider).build();
-        HttpPost ingest = new HttpPost(FEDORA_URI + "/objects/genomics:1?format=info:fedora/fedora-system:FOXML-1.1");
-        ingest.setEntity(new ByteArrayEntity(Files.readAllBytes(FOXML)));
+        ingest("genomics:1", Paths.get(FOXML, "genomics_1.xml"));
+        ingest("genomics:2", Paths.get(FOXML, "genomics_2.xml"));
+    }
+
+    private static void ingest(String pid, Path payload) throws IOException, ClientProtocolException {
+        HttpPost ingest = new HttpPost(FEDORA_URI + "/objects/" + pid + "?format=info:fedora/fedora-system:FOXML-1.1");
+        ingest.setEntity(new ByteArrayEntity(Files.readAllBytes(payload)));
         ingest.setHeader("Content-type", MediaType.TEXT_XML);
         try (CloseableHttpResponse pidRes = httpClient.execute(ingest)) {
-            log.info("Ingested test object {}", EntityUtils.toString(pidRes.getEntity()));
+            assertEquals(HttpStatus.SC_CREATED, pidRes.getStatusLine().getStatusCode());
+            logger.info("Ingested test object {}", EntityUtils.toString(pidRes.getEntity()));
         }
     }
 
@@ -87,7 +101,7 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         serverFactory.setUserManager(userManagerFactory.createUserManager());
         serverFactory.setListeners(mapOf("default", listenerFactory.createListener()));
         server = serverFactory.createServer();
-        log.info("Starting FTP server on port: {}", FTP_PORT);
+        logger.info("Starting FTP server on port: {}", FTP_PORT);
         server.start();
     }
 
@@ -106,17 +120,40 @@ public class TransmissionRouteBuilderIT extends CamelBlueprintTestSupport {
         assertTrue("Failed to connect to FTP server!", FTPReply.isPositiveCompletion(ftp.getReplyCode()));
         ftp.login("testUser", "testPassword");
         ftp.changeWorkingDirectory("pool/genomics/testUser");
-        try (InputStream testData = ftp.retrieveFileStream("testfile.fa");) {
+        try (InputStream testData = ftp.retrieveFileStream("testfile1.fa");) {
             String data = IoUtils.readFully(testData);
             assertEquals("THIS DATA IS SO INCREDIBLY INTERESTING!\n", data);
         }
     }
-    
-    @SuppressWarnings({"serial", "unchecked"})
+
+    @Test
+    public void testReception() throws IOException {
+        template().sendBodyAndHeaders("direct:reception", "", mapOf("pid", "genomics:2", "user", "testUser"));
+        HttpGet request = new HttpGet(FEDORA_URI + "/objects/genomics:2/datastreams/OBJ?format=xml");
+        final String externalLocation;
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+            try (InputStream content = response.getEntity().getContent()) {
+                String xml = IoUtils.readFully(content);
+                logger.info("Found datastream profile:\n{}", xml);
+                Matcher matcher = dsLocation.matcher(xml);
+                matcher.find();
+                String fileUri = matcher.group(1);
+                externalLocation = fileUri.replace("file:/", "");
+                logger.info("Found datastream location:\n{}", externalLocation);
+            }
+        }
+        assertTrue(Files.exists(Paths.get(externalLocation)));
+    }
+
+    @SuppressWarnings({ "serial", "unchecked" })
     private static <K, V> Map<K, V> mapOf(Object... mappings) {
-        return new HashMap<K, V>(mappings.length / 2) {{
-                for (int i = 0; i < mappings.length; i = i + 2) put((K) mappings[i], (V) mappings[i + 1]);
-            }};
+        return new HashMap<K, V>(mappings.length / 2) {
+            {
+                for (int i = 0; i < mappings.length; i = i + 2)
+                    put((K) mappings[i], (V) mappings[i + 1]);
+            }
+        };
     }
 
     @FunctionalInterface

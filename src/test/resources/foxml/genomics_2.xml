@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<foxml:digitalObject VERSION="1.1" PID="genomics:1" xmlns:foxml="info:fedora/fedora-system:def/foxml#"
+<foxml:digitalObject VERSION="1.1" PID="genomics:2" xmlns:foxml="info:fedora/fedora-system:def/foxml#"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="info:fedora/fedora-system:def/foxml# http://www.fedora.info/definitions/1/0/foxml1-1.xsd">
   <foxml:objectProperties>
     <foxml:property NAME="info:fedora/fedora-system:def/model#state" VALUE="Active" />
@@ -9,7 +9,7 @@
 
   <foxml:datastream ID="OBJ" STATE="A" CONTROL_GROUP="E" VERSIONABLE="true">
     <foxml:datastreamVersion ID="OBJ.0" LABEL="Pretend genomics data" MIMETYPE="">
-      <foxml:contentLocation TYPE="URL" REF="file:/${build.directory}/testfile1.fa" />
+      <foxml:contentLocation TYPE="URL" REF="file:/${build.directory}/testfile2.fa" />
     </foxml:datastreamVersion>
   </foxml:datastream>
 
