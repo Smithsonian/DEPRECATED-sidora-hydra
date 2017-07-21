@@ -19,8 +19,10 @@ public class HydraRouteBuilder extends RouteBuilder {
 
         onException(Throwable.class).to("mock:errorRoute");
         
-        // common routing
+        /// common routing
+        
         from("direct:acquire-file-location")
+        .description("Find location of external datastream")
         .setHeader(HTTP_METHOD, constant("GET"))
         .setHeader(HTTP_URI, simple("{{edu.si.sidora.hydra.fedora.uri}}/objects/${header.pid}/datastreams/OBJ?format=xml"))
         .to("http://dummyUri?authMethod=Basic&authUsername={{edu.si.sidora.hydra.fedora.user}}&authPassword={{edu.si.sidora.hydra.fedora.password}}&httpClient.authenticationPreemptive=true")
@@ -30,6 +32,7 @@ public class HydraRouteBuilder extends RouteBuilder {
         .removeHeaders(allOf(HTTP_URI, HTTP_METHOD));
 
         from("direct:acquire-file")
+        .description("Find file on disk and acquire a stream to it")
         // get the file from the fileUri header
         .process(exchange -> {
             String fileUri = exchange.getIn().getHeader("fileUri", String.class);
@@ -49,15 +52,16 @@ public class HydraRouteBuilder extends RouteBuilder {
                 .to("direct:transmission")
             .when(simple("${header.operationName} == \"receiveFromDropbox\""))
                 .to("direct:reception");
-        
-        // from Sidora to Hydra
+
         from("direct:transmission")
+        .description("Move files from Sidora to Hydra")
         .to("direct:acquire-file-location")
         .to("direct:acquire-file")
         .to("direct:transmit-to-hydra")
         .log(INFO, "${header.pid},${header.user},${header.email},File transfer to Hydra complete!");
 
         from("direct:transmit-to-hydra")
+        .description("Move an acquired datastream stream from Sidora to Hydra")
         .log(DEBUG, "Transmitting file with length: ${header.size}")
         .choice()
             .when(simple("${header.fileSize} >= {{edu.si.sidora.hydra.sizeForScratch}}"))
@@ -70,9 +74,9 @@ public class HydraRouteBuilder extends RouteBuilder {
         .toD("ftp://{{edu.si.sidora.hydra.location}}:{{edu.si.sidora.hydra.port}}/${header.hydraStorageChoice}/genomics/${header.user}?username=testUser&password=testPassword&autoCreate=true")
         // time and logging level should be inserted into the following log message by the logging config in deployment
         .removeHeader("hydraStorageChoice");
-        
-        // from dropbox to Sidora
+
         from("direct:reception")
+        .description("Move files from a dropbox to Sidora")
         .to("direct:acquire-file-location")
         .to("direct:acquire-file")
         .to("direct:move-file")
@@ -81,6 +85,7 @@ public class HydraRouteBuilder extends RouteBuilder {
         .log(INFO, "${header.pid},${header.user},${header.email},File transfer to Hydra complete!");
 
         from("direct:move-file")
+        .description("Copy bits from dropbox to Sidora")
         .threads(5)
         .process(e -> e.getIn().setHeader("UUID", getContext().getUuidGenerator().generateUuid()))
         .setHeader("externalStorage").simple("{{edu.si.sidora.hydra.externalStorageLocation}}/${header.user}/${header.UUID}")
@@ -88,6 +93,7 @@ public class HydraRouteBuilder extends RouteBuilder {
         .setBody().constant("");
         
         from("direct:point-object-to-new-file")
+        .description("Alter the datastream profile in an object to point at a moved file")
         .setHeader(HTTP_METHOD, constant("PUT"))
         .setHeader("newFileLocation")
             .simple("file:/${header.externalStorage}/${header.CamelFileName}")

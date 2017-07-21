@@ -187,7 +187,7 @@
         <version>3.0.0</version>
         <configuration>
           <portNames>
-            <portName>dynamic.test.port</portName>
+            <portName>fedora.test.port</portName>
             <portName>edu.si.sidora.hydra.port</portName>
           </portNames>
         </configuration>
@@ -209,10 +209,10 @@
         <version>2.20</version>
         <configuration>
           <systemPropertyVariables>
-            <dynamic.test.port>${dynamic.test.port}</dynamic.test.port>
+            <fedora.test.port>${fedora.test.port}</fedora.test.port>
             <buildDirectory>${project.build.directory}</buildDirectory>
             <edu.si.sidora.hydra.port>${edu.si.sidora.hydra.port}</edu.si.sidora.hydra.port>
-            <si.fedora.host>http://localhost:${dynamic.test.port}/fcrepo-webapp-fedora</si.fedora.host>
+            <si.fedora.host>http://localhost:${fedora.test.port}/fcrepo-webapp-fedora</si.fedora.host>
             <si.fedora.user>fedoraAdmin</si.fedora.user>
             <si.fedora.password>fc</si.fedora.password>
           </systemPropertyVariables>
@@ -249,7 +249,7 @@
               <cargo.servlet.uriencoding>UTF-8</cargo.servlet.uriencoding>
               <cargo.jvmargs>-Xmx512m</cargo.jvmargs>
               <cargo.logging>high</cargo.logging>
-              <cargo.servlet.port>${dynamic.test.port}</cargo.servlet.port>
+              <cargo.servlet.port>${fedora.test.port}</cargo.servlet.port>
               <!-- fire AJP into /dev/null -->
               <cargo.tomcat.ajp.port>0</cargo.tomcat.ajp.port>
             </properties>
