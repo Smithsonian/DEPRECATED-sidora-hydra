@@ -20,7 +20,7 @@ import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class FtpRouteBuilderIT extends CamelBlueprintTestSupport {
+public abstract class FtpEquippedRouteBuilderIT extends CamelBlueprintTestSupport {
 
     private static final String BUILD_DIR = System.getProperty("buildDirectory");
     private static final int FTP_PORT = Integer.parseInt(System.getProperty("edu.si.sidora.hydra.port"));

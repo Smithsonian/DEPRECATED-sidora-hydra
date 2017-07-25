@@ -21,6 +21,11 @@ public interface HydraService {
     @Path("/receive")
     public Response receiveFromDropbox(@FormParam("pid") String pid, @FormParam("user") String user,
                     @FormParam("email") String email);
+    
+    @POST
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Path("/list")
+    public Response listDropbox(@FormParam("user") String user);
 
 
 }

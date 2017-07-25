@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.model.dataformat.JsonLibrary;
 
 public class HydraRouteBuilder extends RouteBuilder {
 
@@ -51,7 +52,9 @@ public class HydraRouteBuilder extends RouteBuilder {
             .when(simple("${header.operationName} == \"transmitToHydra\""))
                 .to("direct:transmission")
             .when(simple("${header.operationName} == \"receiveFromDropbox\""))
-                .to("direct:reception");
+                .to("direct:reception")
+            .when(simple("${header.operationName} == \"listDropbox\""))
+                .to("direct:file-listing");
 
         from("direct:transmission")
         .description("Move files from Sidora to Hydra")
@@ -101,6 +104,17 @@ public class HydraRouteBuilder extends RouteBuilder {
             .simple("{{edu.si.sidora.hydra.fedora.uri}}/objects/${header.pid}/datastreams/OBJ?dsLocation=${header.newFileLocation}")
         .to("http://dummyUri?authMethod=Basic&authUsername={{edu.si.sidora.hydra.fedora.user}}&authPassword={{edu.si.sidora.hydra.fedora.password}}&httpClient.authenticationPreemptive=true")
         .removeHeaders(allOf("newFileLocation", HTTP_METHOD, HTTP_URI, "externalStorage"));
+        
+        from("direct:file-listing")
+        .description("List files in a dropbox")
+        .setHeader("dropbox").simple("{{edu.si.sidora.dropboxLocation}}/${header.user}")
+        .process(exchange -> {
+            String dropboxLoc = exchange.getIn().getHeader("dropbox", String.class);
+            File dropbox = new File(dropboxLoc);
+            String[] fileList = !dropbox.exists() || !dropbox.isDirectory() ? new String[0] : dropbox.list();
+            exchange.getIn().setBody(fileList);
+        })
+        .marshal().json(JsonLibrary.Jackson, true);
     }
 
     private static String allOf(String... these) {

@@ -17,6 +17,8 @@
       <cm:property name="edu.si.sidora.hydra.port" value="$[edu.si.sidora.hydra.port]" />
       <cm:property name="edu.si.sidora.hydra.sizeForScratch" value="100000000000" />
       <cm:property name="edu.si.sidora.hydra.externalStorageLocation" value="$[buildDirectory]/external-storage" />
+      <!-- default value is for integration testing and pretends that the target/ directory is the dropbox container -->
+      <cm:property name="edu.si.sidora.dropboxLocation" value="$[buildDirectory]" />
     </cm:default-properties>
   </cm:property-placeholder>
 
