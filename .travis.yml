@@ -1,0 +1,7 @@
+language: java
+sudo: false
+jdk:
+  - oraclejdk8
+env:
+  global:
+    - JAVA_OPTS="-Xmx3072M -Xms512M -XX:+UseG1GC"
