@@ -4,13 +4,17 @@ import static org.apache.commons.httpclient.HttpStatus.SC_CREATED;
 import static org.apache.cxf.helpers.IOUtils.readStringFromStream;
 import static org.apache.http.auth.AuthScope.ANY;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.camel.test.blueprint.CamelBlueprintTestSupport;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.ClientProtocolException;
@@ -24,18 +28,25 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HydraRouteBuilderIT extends FtpEquippedRouteBuilderIT {
+public class HydraRouteBuilderIT extends CamelBlueprintTestSupport {
+    
     protected static final String FEDORA_URI = System.getProperty("si.fedora.host");
 
-    private static final String FOXML = System.getProperty("buildDirectory") + "/foxml";
+    private static final String BUILD_DIR = System.getProperty("buildDirectory");
+    private static final int FTP_PORT = Integer.parseInt(System.getProperty("edu.si.sidora.hydra.port"));
+    private static final String FOXML = BUILD_DIR + "/foxml";
 
     private static final Logger logger = LoggerFactory.getLogger("Integration tests");
 
     private static CloseableHttpClient httpClient;
+    
+    @Rule
+    public final FtpGear ftp = new FtpGear(new File(BUILD_DIR + "/ftpserver/user.properties"), FTP_PORT);
 
     @Override
     protected String getBlueprintDescriptor() {
@@ -69,7 +80,7 @@ public class HydraRouteBuilderIT extends FtpEquippedRouteBuilderIT {
     
     @Test
     public void testListing() throws IOException {
-        // pretend that FOXML is a real user
+        // pretend that FOXML is a user
         String results = template().requestBodyAndHeaders("direct:file-listing", "", mapOf("user", "foxml"), String.class);
         String expected = "[ \"genomics_1.xml\", \"genomics_2.xml\" ]";
         assertEquals("Did not find correct file listing!", expected, results);
@@ -78,8 +89,8 @@ public class HydraRouteBuilderIT extends FtpEquippedRouteBuilderIT {
     @Test
     public void testTransmission() throws IOException {
         template().sendBodyAndHeaders("direct:transmission", "", mapOf("pid", "genomics:1", "user", "testUser"));
-        ftpClient.changeWorkingDirectory("pool/genomics/testUser");
-        String results = readStringFromStream(ftpClient.retrieveFileStream("testfile1.fa"));
+        ftp.client.changeWorkingDirectory("pool/genomics/testUser");
+        String results = readStringFromStream(ftp.client.retrieveFileStream("testfile1.fa"));
         assertEquals("THIS DATA IS SO INCREDIBLY INTERESTING!\n", results);
     }
 
@@ -97,5 +108,12 @@ public class HydraRouteBuilderIT extends FtpEquippedRouteBuilderIT {
         logger.info("Found datastream location:\n{}", externalLocation); 
         String contents = new String(Files.readAllBytes(Paths.get(externalLocation)));
         assertEquals("THIS DATA IS SO INCREDIBLY FASCINATING!\n", contents);
+    }
+    
+    @SuppressWarnings({ "serial", "unchecked" })
+    private static <K, V> Map<K, V> mapOf(Object... mappings) {
+        return new HashMap<K, V>(mappings.length / 2) {{
+                for (int i = 0; i < mappings.length; i = i + 2) put((K) mappings[i], (V) mappings[i + 1]);
+            }};
     }
 }
